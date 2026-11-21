@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eval Evidence Dashboard</title>
+<meta name="description" content="A working eval loop for an enterprise chat assistant: golden set, LLM judge, statistics, iterations and a ship decision. Built by Tushar Prasad.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap top-inner">
+    <a class="brand" href="index.html" style="color:inherit;text-decoration:none">← Story · Evidence dashboard</a>
+    <nav>
+      <a href="#decision">Decision</a><a href="#iterations">Iterations</a><a href="#areas">Risk areas</a>
+      <a href="#evalofeval">Eval of the eval</a><a href="#cases">Cases</a><a href="#method">Method</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <p class="eyebrow">Portfolio demo · Tushar Prasad · Senior GenAI PM</p>
+    <h1>I tried to improve an enterprise chat assistant.<br><span class="accent">The evals told me I was wrong. Twice.</span></h1>
+    <p class="lede">This is a working quality loop for a Copilot-style assistant that answers from company documents:
+      a golden set, code + LLM graders, repeated sampling with confidence intervals, a held-out set, and a ship decision.
+      Every number on this page comes from real model calls. <span id="meta-line"></span></p>
+    <div class="tiles" id="hero-tiles"></div>
+  </section>
+
+  <section id="decision">
+    <h2>The decision</h2>
+    <div id="decision-body" class="memo"></div>
+  </section>
+
+  <section id="iterations">
+    <h2>Iterations: what I changed, what the evals said</h2>
+    <p class="sub">Pass rate is the mean across <span class="k-samples"></span> samples per case. Bars show 95% bootstrap confidence intervals. Overlapping bars = no proven difference.</p>
+    <div id="iter-chart" class="card"></div>
+    <div id="timeline" class="timeline"></div>
+  </section>
+
+  <section id="areas">
+    <h2>Quality by risk area</h2>
+    <p class="sub">Pass rate per risk area (6 cases × <span class="k-samples"></span> samples each on the dev set). Small n: read big gaps, not small ones.</p>
+    <div class="card scroll-x"><table id="heat" class="heat"></table></div>
+    <h3>Failure modes (count across all samples)</h3>
+    <div class="card scroll-x"><table id="fm" class="fm"></table></div>
+  </section>
+
+  <section id="evalofeval">
+    <h2>Eval of the eval</h2>
+    <p class="sub">A judge you haven't checked is just a second opinion. These are the checks on the measurement itself.</p>
+    <div class="tiles" id="eoe-tiles"></div>
+    <div id="eoe-notes" class="notes"></div>
+  </section>
+
+  <section id="cases">
+    <h2>Case explorer</h2>
+    <p class="sub">Every conversation, every sampled response, and the judge's reasoning. Check my work.</p>
+    <div class="filters">
+      <select id="f-set"></select>
+      <select id="f-intent"><option value="">All risk areas</option></select>
+      <select id="f-outcome">
+        <option value="">All outcomes</option>
+        <option value="changed">Outcome differs across variants</option>
+        <option value="anyfail">Any variant fails</option>
+        <option value="flaky">Flaky (samples disagree)</option>
+      </select>
+      <input id="f-q" type="search" placeholder="Search text…">
+    </div>
+    <div id="case-list" class="case-list"></div>
+  </section>
+
+  <section id="method">
+    <h2>Method</h2>
+    <div id="method-body" class="grid2"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p>Built by Tushar Prasad. Fictional "Contoso" handbook; no real company data. Harness: Python + OpenAI API. Code and data: see README in the repo.</p>
+</footer>
+
+<dialog id="case-dlg"><div id="case-dlg-body"></div></dialog>
+<script src="app.js"></script>
+</body>
+</html>

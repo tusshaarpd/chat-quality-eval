@@ -1,0 +1,127 @@
+{
+ "hero_tiles": [
+  {
+   "v": "4",
+   "l": "Iterations, each one a hypothesis",
+   "d": "48 dev + 16 held-out conversations"
+  },
+  {
+   "v": "912",
+   "l": "Responses graded",
+   "d": "3 samples per case, LLM judge + code checks"
+  },
+  {
+   "v": "2 of 3",
+   "l": "My prompt changes that made something worse",
+   "d": "Caught by evals, not by users"
+  },
+  {
+   "v": "+8.3 pts",
+   "l": "First significant gain came from the smallest change (v5)",
+   "d": "95% CI +2.8 to +15.3; 5 fixed, 0 broken"
+  }
+ ],
+ "decision_html": "\n<h3>Recommendation: v5 is the candidate. It flights only after one human call. v2, v3 and v4 are rejected.</h3>\n<p class=\"rat\"><b>Ship rule, written before v5 was run:</b> flight only if hallucination flags are no higher than the baseline's on both sets AND pass rate is not lower.</p>\n<ul>\n<li><b>Dev set: v5 passes clearly.</b> 95.8% vs 87.5% for the baseline: +8.3 pts, 95% CI +2.8 to +15.3, the only significant gain in this study. 5 cases fixed, 0 broken. Hallucination flags 2→1. Refuses-harmful-asks 67%→94%. Median latency −29%.</li>\n<li><b>Held-out set: not proven, and the rule fails as written.</b> +4.2 pts on 16 unseen cases, which is not significant. Hallucination flags 1→3, and <b>all of v5's come from one disputed case</b> (it says sick leave doesn't roll over; the handbook is silent). I won't bend the rule after seeing the result. A human adjudicates that label: if the inference is acceptable, v5 flights; if not, it gets a grounding fix and a re-run.</li>\n<li><b>Correctness and preference disagree.</b> The rubric judge says v5 is better. The pairwise judge leans v1 (14 vs 6), mostly calling v1 \"slightly better\" for fuller answers. That judge favours longer answers (41/66 calls), and 16 of its 48 verdicts flip with order. That is a style question for real users, which the flight's thumbs-down and regenerate rates will settle.</li>\n<li><b>Rejected:</b> v2 and v3 (hallucination flags 8 and 9 vs 2, despite v3 being 31% faster). v4 (bigger model): about 5× the token price for no significant gain. I keep it as a <b>routing</b> experiment for policy questions with numbers and thresholds, where it was strongest.</li>\n</ul>\n<p><b>Flight guardrails</b> (stop if breached): hallucination reports on grounded answers, refusal rate on benign asks, thumbs-down and regenerate rate, p95 latency. <b>Before full rollout:</b> grow the set to a few hundred cases (enough to see a 5-point change) and finish the 30-label human calibration of the judge.</p>\n",
+ "iterations": [
+  {
+   "tag": "v1",
+   "title": "Baseline: one-line prompt over the documents",
+   "change": "\"You are Contoso Copilot, a helpful AI assistant\" plus the retrieved handbook.",
+   "result": "87.5% on dev. Weakest areas: following instructions (67%) and refusing harmful asks well (67%).",
+   "learned": "A modern model is already strong on easy cases. The quality work is in the tail: formats, refusals, edge cases."
+  },
+  {
+   "tag": "v2",
+   "title": "Seven rules, each mapped to a failure mode",
+   "verdict": "Worse",
+   "verdict_kind": "bad",
+   "change": "Explicit rules for grounding, constraints, ambiguity, capabilities, self-correction, safety and style.",
+   "result": "Fell to 83.3%. Doesn't-over-refuse dropped to 67%: the grounding rule leaked into general questions, so the bot added fake citations like \"[DOC-2]\" to a Linux how-to. \"Be concise\" also cut steps users needed.",
+   "learned": "Every prompt rule has a blast radius. Scope a rule to where it applies, then test what it touches."
+  },
+  {
+   "tag": "E1",
+   "title": "Fixed the eval before touching the prompt again",
+   "verdict": "Eval bug",
+   "verdict_kind": "warn",
+   "change": "Re-read every failure. Three of my own rubric expectations penalised correct answers. Moved from 1 to 3 samples per case.",
+   "result": "Up to 8 of 48 cases flip between pass and fail across samples. The scary 13-point drop I saw on single samples was mostly noise.",
+   "learned": "Evaluate the eval first. One sample per case and an unchecked rubric will send you in the wrong direction."
+  },
+  {
+   "tag": "v3",
+   "title": "Scoped rules",
+   "verdict": "Rejected",
+   "verdict_kind": "bad",
+   "change": "Grounding only when documents are given; raw output means no code fences; keep required steps; name the approved alternative when declining.",
+   "result": "Dev 86.1%, held-out 91.7%: equal to baseline within noise. 31% faster, 36% fewer tokens, better refusals. I nearly recommended it. Then the failure table showed 9 hallucination flags vs 2 for v1: wrong policy facts like the sick-leave threshold.",
+   "learned": "An aggregate pass rate can hide the one failure mode that matters most. Gate on critical failure modes, not the average."
+  },
+  {
+   "tag": "v4",
+   "title": "Same prompt, bigger model (gpt-4.1)",
+   "verdict": "Route, don't upgrade",
+   "verdict_kind": "neutral",
+   "change": "Kept v3's prompt and swapped the model, to test whether the leftover errors are capability gaps.",
+   "result": "Best dev score (89.6%), grounded answers 100%, following instructions 83%. Held-out 89.6%. Still within noise of baseline, at about 5× the token price.",
+   "learned": "The bigger model fixes the error class that matters most (wrong policy facts). So route those questions to it, rather than pay for it on every chat."
+  },
+  {
+   "tag": "v5",
+   "title": "Baseline + only the 2 rules that won on both sets",
+   "verdict": "Candidate",
+   "verdict_kind": "good",
+   "change": "Went back to v1 and added just two lines: raw output when asked, and decline with a legitimate route. Ship rule written down before running.",
+   "result": "Dev 95.8% (+8.3 pts, significant), 1 hallucination flag. Held-out 87.5% (+4.2 pts, not significant), with flags on one disputed case.",
+   "learned": "The smallest change with the smallest blast radius won. More rules weren't better rules."
+  }
+ ],
+ "eval_of_eval": [
+  {
+   "title": "Rubric bugs are real bugs",
+   "body": "3 of 48 expectations were wrong and penalised correct answers. They were fixed before the final runs, and every variant was re-judged on the same rubric."
+  },
+  {
+   "title": "Position bias in pairwise judging",
+   "body": "16 of 48 pairwise verdicts flipped when I swapped which answer came first. So every comparison runs in both orders, a flip counts as a tie, and pointwise grading is the primary metric."
+  },
+  {
+   "title": "Length bias: depends on the comparison",
+   "body": "v5 vs v1: the longer answer won 41 of 66 pairwise calls (62%), borderline significant. It helps explain why the pairwise judge leans to the wordier v1. In the earlier v4 vs v1 comparison it was a coin flip (47 of 92). So pairwise preference is a weak signal here, and real users should settle it."
+  },
+  {
+   "title": "Judge vs exact rules",
+   "body": "On format cases a program can check (valid JSON, exact line counts, banned words), the LLM judge agreed with the code 97% of the time."
+  },
+  {
+   "title": "A disputed label I did not \"fix\"",
+   "body": "Held-out case ho-unanswerable-02: the bot says sick leave doesn't roll over. The handbook never says so; it's a reasonable inference, and the judge calls it a hallucination. Changing a held-out label after seeing results defeats its purpose, so it stays as is and is flagged for human review."
+  },
+  {
+   "title": "Sample size is the honest limit",
+   "body": "With 48 cases, the 95% interval is about ±8 points. Detecting a 5-point change needs a few hundred cases. That is the first investment I would make."
+  }
+ ],
+ "method": [
+  {
+   "title": "What \"quality\" means here",
+   "html": "<ul><li><b>8 risk areas:</b> grounded answers, saying \"I don't know\", following instructions, ambiguity, multi-turn context, refusing harmful asks, not over-refusing, reasoning.</li><li><b>5 scored dimensions</b> (1–5): correctness, instruction following, helpfulness, safety, conciseness.</li><li><b>Pass</b> = meets the case's must-haves with no critical failure mode.</li></ul>"
+  },
+  {
+   "title": "Failure taxonomy",
+   "html": "<p>Hallucination · ignored constraint · missed clarification · needless clarification · false action claim (\"I've sent it\") · repeated error · unsafe compliance · over-refusal · reasoning error · incomplete · verbose.</p><p class='rat'>Each prompt rule is written against one of these, so every change is a testable hypothesis.</p>"
+  },
+  {
+   "title": "Graders",
+   "html": "<ul><li><b>Code checks</b> wherever a rule is exact (JSON validity, line counts, banned words).</li><li><b>LLM judge</b> (<code>gpt-5.4</code>, a different and stronger model than the bot) with a strict JSON schema, the reference documents, and a per-case expectation.</li><li><b>Pairwise judge</b> run in both A/B orders.</li><li><b>Human calibration:</b> 30 blind labels → agreement and Cohen's κ.</li></ul>"
+  },
+  {
+   "title": "Statistics",
+   "html": "<ul><li>3 samples per case at temperature 0.3, so flakiness is visible.</li><li>95% bootstrap intervals, and paired deltas against the baseline.</li><li>A held-out set written after tuning, to catch overfitting.</li></ul>"
+  },
+  {
+   "title": "From offline evals to production",
+   "html": "<ul><li><b>Gate:</b> every prompt or model change runs this suite in CI; no regression in critical failure modes.</li><li><b>Flight:</b> 5–10% of traffic. Watch thumbs-down, regenerate, rephrase-within-a-minute, copy/accept, and abandonment.</li><li><b>Guardrails:</b> hallucination reports, benign refusal rate, p95 latency, cost per conversation.</li><li><b>Flywheel:</b> sample failed production chats weekly into the golden set, so the eval grows where users actually struggle.</li></ul>"
+  }
+ ]
+}

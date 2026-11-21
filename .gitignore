@@ -1,0 +1,6 @@
+.env
+__pycache__/
+.vercel
+harness/runs/
+EXPLAIN.md
+*.pdf
